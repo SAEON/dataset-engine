@@ -1,0 +1,11 @@
+[DB]
+USER = ocean_model_db_user
+PASS = xx
+HOST = localhost
+PORT = 5430
+NAME = ocean_model_db
+ECHO = False
+ISOLATION_LEVEL = READ COMMITTED
+
+[OCEAN_DATASET]
+API_URL = 'http://localhost:2024/product/all_products'

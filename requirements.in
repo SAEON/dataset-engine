@@ -1,0 +1,22 @@
+sqlalchemy
+psycopg2
+fastapi
+starlette
+httpx
+pandas
+python-multipart
+xarray
+netcdf4
+requests
+
+# testing
+pytest
+coverage
+sqlalchemy_utils
+factory-boy
+faker
+alembic
+
+# deployment
+uvicorn
+configparser
