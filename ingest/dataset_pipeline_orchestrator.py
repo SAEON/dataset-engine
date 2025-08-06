@@ -1,10 +1,10 @@
 import logging
-
-from fetchers import REGISTERED_FETCHERS
-from ingest.fetchers.models import FetchedDataset
-from ingesters import data_processor_factory
-import threading
 import queue
+import threading
+
+from ingest.fetchers.models import FetchedDataset
+from .fetchers import REGISTERED_FETCHERS
+from .ingesters import data_processor_factory
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def run():
     We first wake up the queue and get it 'listening'
     Then we fire off the fetchers which will add items to the queue. As soon as an item is added it will be picked up.
     """
-    threading.Thread(target=queue_worker, daemon=True).start()
+    threading.Thread(target=queue_worker).start()
 
     for fetcher in REGISTERED_FETCHERS:
         fetched_datasets = fetcher.fetch_datasets()
@@ -42,4 +42,5 @@ def run():
 
     # Add an object to the end, so we know the queue is empty
     q.put(SENTINEL)
+    q.join()
 

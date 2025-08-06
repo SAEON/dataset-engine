@@ -22,6 +22,11 @@ class BulkInserter:
         if len(self.records_to_insert) >= self.batch_size:
             self.insert_records()
 
+    def flush(self):
+        self.insert_records()
+        curr.close()
+        conn.close()
+
     def insert_records(self):
         extras.execute_values(curr, self.insert_sql, self.records_to_insert, page_size=self.batch_size)
         conn.commit()

@@ -22,7 +22,7 @@ Session = scoped_session(
     sessionmaker(
         bind=engine,
         autocommit=False,
-        autoflush=False,
+        autoflush=True,
         future=True,
     )
 )
@@ -31,11 +31,11 @@ Session = scoped_session(
 class _Base:
     def save(self):
         Session.add(self)
-        Session.flush()
+        Session.commit()
 
     def delete(self):
         Session.delete(self)
-        Session.flush()
+        Session.commit()
 
     def to_dict(self):
         return {key: value for key, value in vars(self).items() if not key.startswith('_sa_')}

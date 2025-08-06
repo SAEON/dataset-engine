@@ -1,0 +1,3 @@
+[submodule "odp-core"]
+	path = odp-core
+	url = git@github.com:SAEON/odp-core.git

@@ -1,4 +1,4 @@
-from models import FetchedDataset
+from .models import FetchedDataset
 
 
 class DatasetFetcherInterface:

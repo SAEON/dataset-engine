@@ -39,7 +39,7 @@ class OceanDatasetIngester:
                 self.__iterate_over_points_and_insert_cells(current_time, current_depth, time_index, depth_index)
 
         # Insert any remaining records
-        self.bulk_inserter.insert_records()
+        self.bulk_inserter.flush()
 
     def __iterate_over_points_and_insert_cells(self, current_time, current_depth, time_index, depth_index):
         current_temp_slice = self.netcdf_file_data.temps[time_index, depth_index, :, :]
