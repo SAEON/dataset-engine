@@ -28,7 +28,7 @@ def queue_worker():
         q.task_done()
 
 
-def run():
+def fetch_and_ingest():
     """
     We first wake up the queue and get it 'listening'
     Then we fire off the fetchers which will add items to the queue. As soon as an item is added it will be picked up.

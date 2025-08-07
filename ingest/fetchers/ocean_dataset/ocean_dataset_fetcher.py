@@ -14,27 +14,6 @@ logger = logging.getLogger(__name__)
 class OceanDatasetFetcher(DatasetFetcherInterface):
 
     def fetch_datasets(self) -> list[FetchedDataset]:
-        # ocean_products_json = """
-        #     [
-        #       {
-        #         "north_bound": 45.123456,
-        #         "south_bound": 30.789012,
-        #         "east_bound": -70.987654,
-        #         "west_bound": -85.432109,
-        #         "datasets": [
-        #           {
-        #             "identifier": "test_dataset",
-        #             "type": "OCEAN",
-        #             "folder_path": "/home/dylan/srv/netcdf-extractor/data/croco_avg_t2.nc"
-        #           }
-        #         ]
-        #       }
-        #     ]
-        #     """
-        #
-        # ocean_products = json.loads(ocean_products_json)
-        # return self.__get_datasets(ocean_products)
-
         try:
             ocean_products = cli.get('/product/all_products')
             return self.__get_datasets(ocean_products)
