@@ -1,11 +1,16 @@
 [DB]
 USER = ocean_model_db_user
-PASS = xx
+PASS = password
 HOST = localhost
 PORT = 5430
 NAME = ocean_model_db
-ECHO = False
+ECHO = True
 ISOLATION_LEVEL = READ COMMITTED
 
 [OCEAN_DATASET]
-API_URL = 'http://localhost:2024/product/all_products'
+API_URL = http://localhost:2024
+HYDRA_PUBLIC_URL = http://localhost:9000
+OCEAN_DATA_CLIENT_ID = ocean.data.ci
+OCEAN_DATA_CLIENT_SECRET = 0123456789
+SOMISANA_CATALOG_CI_CLIENT_ID=SOMISANA.Catalog.CI
+SOMISANA_CATALOG_CI_CLIENT_SECRET=secret0123456789
