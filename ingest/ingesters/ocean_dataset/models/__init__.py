@@ -1,5 +1,5 @@
 import json
-
+from psycopg2.extensions import AsIs
 import numpy as np
 
 
@@ -49,6 +49,21 @@ class GridCell:
         ]
 
         return json.dumps(cell_vertices)
+
+    def get_cell_vertices_geometry(self):
+        """
+        Generates a Well-Known Text (WKT) string for a polygon from the cell's vertices.
+        """
+        vertices = [
+            (float(self.lon_point_1), float(self.lat_point_1)),
+            (float(self.lon_point_2), float(self.lat_point_2)),
+            (float(self.lon_point_3), float(self.lat_point_3)),
+            (float(self.lon_point_4), float(self.lat_point_4)),
+            (float(self.lon_point_1), float(self.lat_point_1))  # Close the polygon
+        ]
+
+        wkt_points = ", ".join([f"{lon} {lat}" for lon, lat in vertices])
+        return AsIs(f"ST_SetSRID(ST_GeomFromText('POLYGON(({wkt_points}))'), 4326)")
 
 
 class NetcdfFileData:
@@ -111,3 +126,23 @@ def rho_to_psi(var_rho):
                       var_rho[:-1, 1:] +
                       var_rho[1:, 1:])
     return var_psi
+
+
+class VariableThreshold:
+    """
+    Model for keeping track of the thresholds of a specific variable.
+    """
+    variable_name: str
+    min_value: float
+    max_value: float
+
+    def __init__(self, variable_name: str, min_value: float = 1000, max_value: float = -1000):
+        self.variable_name = variable_name
+        self.min_value = min_value
+        self.max_value = max_value
+
+    def check_set_thresholds(self, check_value: float):
+        if check_value < self.min_value:
+            self.min_value = check_value
+        elif check_value > self.max_value:
+            self.max_value = check_value

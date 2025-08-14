@@ -3,6 +3,7 @@ import os
 import psycopg2
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
+
 from etc.config import config
 
 db_url = f"postgresql://{config['DB']['USER']}:{os.getenv('PGPASSWORD', config['DB']['PASS'])}@{config['DB']['HOST']}:{config['DB']['PORT']}/{config['DB']['NAME']}"

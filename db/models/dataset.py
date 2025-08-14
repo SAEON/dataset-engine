@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Integer, Numeric
+from sqlalchemy import Column, String, Integer, Numeric, DateTime
+from sqlalchemy.orm import relationship
 
 from db import Base
 
@@ -16,3 +17,8 @@ class Dataset(Base):
     south_bound = Column(Numeric, nullable=False)
     east_bound = Column(Numeric, nullable=False)
     west_bound = Column(Numeric, nullable=False)
+    start_date = Column(DateTime)
+    end_date = Column(DateTime)
+    time_step_minutes = Column(Integer)
+
+    variables = relationship("DatasetVariable", back_populates="dataset")

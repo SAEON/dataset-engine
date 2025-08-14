@@ -1,6 +1,8 @@
-from psycopg2 import extras
-from db import conn, curr
 import logging
+
+from psycopg2 import extras
+
+from db import conn, curr
 
 logger = logging.getLogger(__name__)
 

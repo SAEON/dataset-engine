@@ -1,6 +1,7 @@
 -e file:../odp-core
 
 sqlalchemy
+geoalchemy2
 psycopg2
 fastapi
 starlette

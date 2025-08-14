@@ -48,6 +48,8 @@ faker==37.4.2
     #   factory-boy
 fastapi==0.116.1
     # via -r requirements.in
+geoalchemy2==0.18.0
+    # via -r requirements.in
 greenlet==3.2.3
     # via sqlalchemy
 h11==0.16.0
@@ -81,6 +83,7 @@ ory-hydra-client==1.11.8
     # via odp
 packaging==25.0
     # via
+    #   geoalchemy2
     #   pytest
     #   xarray
 pandas==2.3.1
@@ -125,6 +128,7 @@ sqlalchemy==2.0.41
     # via
     #   -r requirements.in
     #   alembic
+    #   geoalchemy2
     #   sqlalchemy-utils
 sqlalchemy-utils==0.41.2
     # via -r requirements.in

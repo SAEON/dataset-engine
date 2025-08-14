@@ -2,14 +2,18 @@ import logging
 
 import numpy as np
 
-from db.bulk_inserter import BulkInserter
+from db.bulk_query import BulkInserter
 from db.models.ocean_dataset_data import INSERT_SQL
-from .models import NetcdfFileData
+from .models import NetcdfFileData, VariableThreshold
+from .utils import insert_variables_and_thresholds, set_dataset_dates
 
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 50000
 LAND_MASK = 0
+
+TEMPERATURE_VARIABLE_NAME = 'temperature'
+SALINITY_VARIABLE_NAME = 'salinity'
 
 
 class OceanDatasetIngester:
@@ -21,6 +25,8 @@ class OceanDatasetIngester:
     records_to_insert = []
     netcdf_file_data: NetcdfFileData
     bulk_inserter: BulkInserter
+    temperature_thresholds: dict[float, VariableThreshold] = dict()
+    salinity_thresholds: dict[float, VariableThreshold] = dict()
 
     def __init__(self, dataset_id: str, netcdf_file_data: NetcdfFileData):
         self.dataset_id = dataset_id
@@ -36,10 +42,17 @@ class OceanDatasetIngester:
             for depth_index in range(self.netcdf_file_data.num_depths):
                 current_depth = self.netcdf_file_data.depths[depth_index]
 
+                self.temperature_thresholds[current_depth] = VariableThreshold(TEMPERATURE_VARIABLE_NAME)
+                self.salinity_thresholds[current_depth] = VariableThreshold(SALINITY_VARIABLE_NAME)
+
                 self.__iterate_over_points_and_insert_cells(current_time, current_depth, time_index, depth_index)
 
         # Insert any remaining records
         self.bulk_inserter.flush()
+
+        # insert_variables_and_thresholds(self.dataset_id, self.temperature_thresholds, self.salinity_thresholds)
+
+        # Set time
 
     def __iterate_over_points_and_insert_cells(self, current_time, current_depth, time_index, depth_index):
         current_temp_slice = self.netcdf_file_data.temps[time_index, depth_index, :, :]
@@ -73,11 +86,15 @@ class OceanDatasetIngester:
                         self.total_skipped_nan_points += 1
                         continue
 
+                    self.temperature_thresholds[current_depth].check_set_thresholds(grid_cell.temp_val)
+                    self.salinity_thresholds[current_depth].check_set_thresholds(grid_cell.salt_val)
+
                     record = (
                         self.dataset_id,
                         current_time,
                         float(current_depth),
-                        grid_cell.get_cell_vertices_json(),
+                        # grid_cell.get_cell_vertices_json(),
+                        grid_cell.get_cell_vertices_geometry(),
                         float(grid_cell.temp_val),
                         float(grid_cell.salt_val),
                         float(grid_cell.u_val),
