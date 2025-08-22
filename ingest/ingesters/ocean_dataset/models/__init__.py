@@ -1,6 +1,5 @@
-import json
-from psycopg2.extensions import AsIs
 import numpy as np
+from psycopg2.extensions import AsIs
 
 
 class GridCell:
@@ -39,16 +38,6 @@ class GridCell:
             if np.isnan(field_val):
                 return False
         return True
-
-    def get_cell_vertices_json(self):
-        cell_vertices = [
-            [float(self.lon_point_1), float(self.lat_point_1)],
-            [float(self.lon_point_2), float(self.lat_point_2)],
-            [float(self.lon_point_3), float(self.lat_point_3)],
-            [float(self.lon_point_4), float(self.lat_point_4)]
-        ]
-
-        return json.dumps(cell_vertices)
 
     def get_cell_vertices_geometry(self):
         """

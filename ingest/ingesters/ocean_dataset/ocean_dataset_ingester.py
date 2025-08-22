@@ -1,16 +1,16 @@
 import logging
+import time
 
 import numpy as np
 
-from db.bulk_query import BulkInserter
-from db.models.ocean_dataset_data import INSERT_SQL
+from db.utils import BulkInserter
 from .models import NetcdfFileData, VariableThreshold
 from .utils import insert_variables_and_thresholds, set_dataset_dates
 
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = 50000
 LAND_MASK = 0
+TIME_STEP_MINUTES = 60
 
 TEMPERATURE_VARIABLE_NAME = 'temperature'
 SALINITY_VARIABLE_NAME = 'salinity'
@@ -18,6 +18,7 @@ SALINITY_VARIABLE_NAME = 'salinity'
 
 class OceanDatasetIngester:
     dataset_id = 0
+    temp_dataset_id: str
     total_skipped_land_points = 0
     total_skipped_nan_points = 0
     total_inserted_cells_count = 0
@@ -30,17 +31,24 @@ class OceanDatasetIngester:
 
     def __init__(self, dataset_id: str, netcdf_file_data: NetcdfFileData):
         self.dataset_id = dataset_id
+        self.temp_dataset_id = f'temp_{self.dataset_id}'
         self.netcdf_file_data = netcdf_file_data
 
-        self.bulk_inserter = BulkInserter(insert_sql=INSERT_SQL, batch_size=BATCH_SIZE)
+    def set_bulk_inserter(self, bulk_inserter: BulkInserter):
+        self.bulk_inserter = bulk_inserter
 
     def ingest_data(self):
+        start_time = time.time()
+        start_date = end_date = np.datetime_as_string(self.netcdf_file_data.times[0])
+
         for time_index in range(self.netcdf_file_data.num_times):
             current_time = np.datetime_as_string(self.netcdf_file_data.times[time_index], unit='s')
+            end_date = np.datetime_as_string(self.netcdf_file_data.times[time_index])
+
             logger.info(f"Processing time step {time_index + 1}/{self.netcdf_file_data.num_times} ({current_time})")
 
             for depth_index in range(self.netcdf_file_data.num_depths):
-                current_depth = self.netcdf_file_data.depths[depth_index]
+                current_depth = float(self.netcdf_file_data.depths[depth_index])
 
                 self.temperature_thresholds[current_depth] = VariableThreshold(TEMPERATURE_VARIABLE_NAME)
                 self.salinity_thresholds[current_depth] = VariableThreshold(SALINITY_VARIABLE_NAME)
@@ -50,9 +58,19 @@ class OceanDatasetIngester:
         # Insert any remaining records
         self.bulk_inserter.flush()
 
-        # insert_variables_and_thresholds(self.dataset_id, self.temperature_thresholds, self.salinity_thresholds)
+        insert_variables_and_thresholds(self.dataset_id, self.temperature_thresholds, self.salinity_thresholds)
 
-        # Set time
+        set_dataset_dates(
+            self.dataset_id,
+            start_date,
+            end_date,
+            TIME_STEP_MINUTES
+        )
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        with open("ingest_data_runtime.txt", "w") as f:
+            f.write(f"The ingest_data function took {elapsed_time:.2f} seconds to run.")
 
     def __iterate_over_points_and_insert_cells(self, current_time, current_depth, time_index, depth_index):
         current_temp_slice = self.netcdf_file_data.temps[time_index, depth_index, :, :]
@@ -86,14 +104,13 @@ class OceanDatasetIngester:
                         self.total_skipped_nan_points += 1
                         continue
 
-                    self.temperature_thresholds[current_depth].check_set_thresholds(grid_cell.temp_val)
-                    self.salinity_thresholds[current_depth].check_set_thresholds(grid_cell.salt_val)
+                    self.temperature_thresholds[current_depth].check_set_thresholds(float(grid_cell.temp_val))
+                    self.salinity_thresholds[current_depth].check_set_thresholds(float(grid_cell.salt_val))
 
                     record = (
-                        self.dataset_id,
+                        self.temp_dataset_id,
                         current_time,
-                        float(current_depth),
-                        # grid_cell.get_cell_vertices_json(),
+                        current_depth,
                         grid_cell.get_cell_vertices_geometry(),
                         float(grid_cell.temp_val),
                         float(grid_cell.salt_val),

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Integer, Numeric, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
-from db import Base
+from db import Base, Session
 
 
 class DatasetVariable(Base):
@@ -18,6 +18,13 @@ class DatasetVariable(Base):
 
     dataset = relationship("Dataset", back_populates="variables")
     thresholds = relationship("VariableThresholds", back_populates="dataset_variable")
+
+    def delete_all_thresholds(self):
+        """
+        Deletes all VariableThresholds associated with this DatasetVariable.
+        """
+        for threshold in self.thresholds:
+            threshold.delete()
 
 
 class VariableThresholds(Base):
