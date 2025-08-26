@@ -5,24 +5,33 @@ CREATE OR REPLACE
     RETURNS bytea AS $$
 DECLARE
   mvt bytea;
+  dataset_table_name TEXT;
+  sql_query TEXT;
 BEGIN
-  SELECT INTO mvt ST_AsMVT(tile, 'get_ocean_data_tile', 4096, 'geom') FROM (
-    SELECT
-      ST_AsMVTGeom(
-            ST_Transform(cell_points, 3857), -- Transform to Web Mercator (3857)
-            ST_TileEnvelope(z, x, y)
+  dataset_table_name := (query ->> 'dataset_id') || '_ocean_dataset_data';
+
+  sql_query := format('
+    SELECT ST_AsMVT(tile, ''get_ocean_data_tile'', 4096, ''geom'') FROM (
+      SELECT
+        ST_AsMVTGeom(
+          ST_Transform(cell_points, 3857),
+          ST_TileEnvelope($1, $2, $3)
         ) AS geom,
-      dataset_id,
-      temperature,
-      salinity,
-      u_velocity,
-      v_velocity
-    FROM
-      ocean_dataset_data
-    WHERE
-      date_time = (query ->> 'date_time')::timestamp WITH TIME ZONE
-      AND depth = (query ->> 'depth')::float
-  ) as tile;
+        dataset_id,
+        temperature,
+        salinity,
+        u_velocity,
+        v_velocity
+      FROM %I
+      WHERE
+        date_time = $4::timestamp WITH TIME ZONE
+        AND depth = $5::float
+    ) AS tile
+  ', dataset_table_name);
+
+  EXECUTE sql_query
+  INTO mvt
+  USING z, x, y, (query ->> 'date_time'), (query ->> 'depth');
 
   RETURN mvt;
 END

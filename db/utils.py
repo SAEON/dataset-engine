@@ -8,9 +8,15 @@ from db import conn, curr, Session, Base
 logger = logging.getLogger(__name__)
 
 
-def create_table(table_class: Base):
-    table_class.__table__.create(Session.connection(), checkfirst=True)
+def create_table(attributes, table_name: str):
+    table_class_name = snake_to_camel(table_name)
+    dynamic_table = type(table_class_name, (Base,), attributes)
+    dynamic_table.__table__.create(Session.connection(), checkfirst=True)
     Session.commit()
+
+
+def table_exists(table_name: str):
+    return Session.bind.dialect.has_table(Session.connection(), table_name)
 
 
 def create_empty_mirrored_temp_table(
@@ -66,3 +72,13 @@ class BulkInserter:
         self.total_inserted_records += len(self.records_to_insert)
         logger.info(f"Inserted {len(self.records_to_insert)} records. Total: {self.total_inserted_records}")
         self.records_to_insert = []
+
+
+def snake_to_camel(snake_case_string):
+    """
+    Converts a snake_case string to camelCase.
+    Useful for generating a table class name from a table name
+    """
+    words = snake_case_string.split('_')
+    camel_case_words = [words[0]] + [word.capitalize() for word in words[1:]]
+    return ''.join(camel_case_words)

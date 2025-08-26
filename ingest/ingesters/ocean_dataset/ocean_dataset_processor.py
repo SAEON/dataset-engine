@@ -1,13 +1,14 @@
+import logging
+
 import xarray as xr
 
+from db.models import ocean_dataset_data
+from db.ocean_dataset_data_table_orchestrator import OceanDatasetDataTableOrchestrator
+from db.utils import BulkInserter
 from ingest.ingesters.dataset_processor_interface import DatasetProcessorInterface
 from .models import NetcdfFileData
 from .ocean_dataset_ingester import OceanDatasetIngester
 from .utils import parse_ocean_dataset_path
-from db.utils import switch_tables, BulkInserter, create_table
-from db.models import OceanDatasetData, TempOceanDatasetData
-from db.models.ocean_dataset_data import TEMP_TABLE_INSERT_SQL
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +27,12 @@ class OceanDatasetProcessor(DatasetProcessorInterface):
             # Load data into data object
             netcdf_file_data = get_netcdf_file_data(parsed_path)
 
-            # Create Temp Table
-            create_table(TempOceanDatasetData)
+            ocean_dataset_data_table_orchestrator = OceanDatasetDataTableOrchestrator(dataset_id)
+            ocean_dataset_data_table_orchestrator.create_ingest_into_table()
 
             # Initialise the bulk inserter with the correct sql
             bulk_inserter = BulkInserter(
-                insert_sql=TEMP_TABLE_INSERT_SQL,
+                insert_sql=ocean_dataset_data_table_orchestrator.get_bulk_insert_sql(),
                 batch_size=INGEST_BATCH_SIZE
             )
 
@@ -41,7 +42,7 @@ class OceanDatasetProcessor(DatasetProcessorInterface):
             netcdf_dataset_ingester.ingest_data()
 
             # Switch Temp table with original table
-            switch_tables(OceanDatasetData.__tablename__, TempOceanDatasetData.__tablename__)
+            ocean_dataset_data_table_orchestrator.switch_tables()
 
             return True
         except Exception as e:
