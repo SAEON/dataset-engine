@@ -26,6 +26,9 @@ class OceanDatasetFetcher(DatasetFetcherInterface):
 
         for product in ocean_products:
             for dataset in product['datasets']:
+                if not dataset['visualize']:
+                    continue
+
                 dataset_id = dataset['identifier']
 
                 if Session.get(Dataset, dataset_id) is None:

@@ -41,7 +41,8 @@ class OceanDatasetIngester:
         start_time = time.time()
         start_date = end_date = np.datetime_as_string(self.netcdf_file_data.times[0])
 
-        for time_index in range(self.netcdf_file_data.num_times):
+        for time_index in range(5):
+        # for time_index in range(self.netcdf_file_data.num_times):
             current_time = np.datetime_as_string(self.netcdf_file_data.times[time_index], unit='s')
             end_date = np.datetime_as_string(self.netcdf_file_data.times[time_index])
 

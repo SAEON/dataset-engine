@@ -17,6 +17,7 @@ BEGIN
           ST_Transform(cell_points, 3857),
           ST_TileEnvelope($1, $2, $3)
         ) AS geom,
+        id,
         dataset_id,
         temperature,
         salinity,
