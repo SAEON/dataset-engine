@@ -19,6 +19,7 @@ class GridCell:
     salt_val: float
     u_val: float
     v_val: float
+    zeta_val: float = np.nan
 
     def is_fully_populated(self):
         """
@@ -65,6 +66,7 @@ class NetcdfFileData:
     salts: []
     us: []
     vs: []
+    zetas: []
     lon_psi: []
     lat_psi: []
     num_times: int

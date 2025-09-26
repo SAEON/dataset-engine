@@ -67,6 +67,7 @@ def get_netcdf_file_data(nc_file_path) -> NetcdfFileData:
     netcdf_file_data.salts = ds['salt'].values
     netcdf_file_data.us = ds['u'].values
     netcdf_file_data.vs = ds['v'].values
+    netcdf_file_data.zetas = ds['zeta'].values
 
     logger.info(
         f"Dataset dimensions: Time={netcdf_file_data.num_times}, Depth={netcdf_file_data.num_depths}, Eta_rho={netcdf_file_data.num_eta}, Xi_rho={netcdf_file_data.num_xi}")

@@ -36,4 +36,5 @@ def get_attributes(table_name: str):
         'salinity': Column(Numeric, nullable=False),
         'u_velocity': Column(Numeric, nullable=False),
         'v_velocity': Column(Numeric, nullable=False),
+        'zeta': Column(Numeric, nullable=True),
     }

@@ -22,7 +22,8 @@ def parse_ocean_dataset_path(ocean_dataset_path) -> str:
 
 
 def insert_variables_and_thresholds(dataset_id: str, temperature_thresholds: dict[float, VariableThreshold],
-                                    salinity_thresholds: dict[float, VariableThreshold]):
+                                    salinity_thresholds: dict[float, VariableThreshold],
+                                    zeta_thresholds: dict[float, VariableThreshold]):
     temperature_variable = Session.query(DatasetVariable).filter(
         DatasetVariable.dataset_id == dataset_id,
         DatasetVariable.variable_name == 'temperature'
@@ -57,6 +58,23 @@ def insert_variables_and_thresholds(dataset_id: str, temperature_thresholds: dic
 
     __save_thresholds(salinity_variable.id, salinity_thresholds)
 
+    zeta_variable = Session.query(DatasetVariable).filter(
+        DatasetVariable.dataset_id == dataset_id,
+        DatasetVariable.variable_name == 'zeta'
+    ).first()
+
+    if not zeta_variable:
+        zeta_variable = DatasetVariable()
+
+    zeta_variable.dataset_id = dataset_id
+    zeta_variable.variable_name = 'zeta'
+    zeta_variable.variable_type = 'layer'
+
+    zeta_variable.save()
+    zeta_variable.delete_all_thresholds()
+
+    __save_thresholds(zeta_variable.id, zeta_thresholds)
+
 
 def __save_thresholds(dataset_variable_id: int, thresholds: dict[float, VariableThreshold]):
     for depth in thresholds:
@@ -74,4 +92,3 @@ def set_dataset_dates(dataset_id: str, start_date: datetime, end_date: datetime,
     dataset.end_date = end_date
     dataset.time_step_minutes = time_step_minutes
     dataset.save()
-

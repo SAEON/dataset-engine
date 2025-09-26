@@ -39,5 +39,5 @@ class OceanDatasetDataTableOrchestrator:
 
     def get_bulk_insert_sql(self) -> str:
         return f"""INSERT INTO {self.ingest_into_table_name} (
-            dataset_id, date_time, depth, cell_points, temperature, salinity, u_velocity, v_velocity
+            dataset_id, date_time, depth, cell_points, temperature, salinity, u_velocity, v_velocity, zeta
         ) VALUES %s"""

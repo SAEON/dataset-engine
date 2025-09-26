@@ -22,7 +22,8 @@ BEGIN
         temperature,
         salinity,
         u_velocity,
-        v_velocity
+        v_velocity,
+        zeta
       FROM %I
       WHERE
         date_time = $4::timestamp WITH TIME ZONE
