@@ -1,16 +1,18 @@
 -e file:../odp-core
 
-sqlalchemy
-geoalchemy2
-psycopg2
 fastapi
 starlette
 httpx
 pandas
 python-multipart
 xarray
-netcdf4
+netCDF4
 requests
+dask
+zarr
+matplotlib
+rioxarray
+scipy
 
 # testing
 pytest

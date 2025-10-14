@@ -1,9 +1,5 @@
 import logging
 
-import json
-
-from db import Session
-from db.models import Dataset
 from ingest.fetchers.dataset_fetcher_interface import DatasetFetcherInterface
 from ingest.fetchers.models import FetchedDataset
 from .client import cli
@@ -29,21 +25,9 @@ class OceanDatasetFetcher(DatasetFetcherInterface):
                 if not dataset['visualize']:
                     continue
 
-                dataset_id = dataset['identifier']
-
-                if Session.get(Dataset, dataset_id) is None:
-                    Dataset(
-                        id=dataset_id,
-                        dataset_type=dataset['type'],
-                        north_bound=product['north_bound'],
-                        south_bound=product['south_bound'],
-                        east_bound=product['east_bound'],
-                        west_bound=product['west_bound'],
-                    ).save()
-
                 fetched_dataset = FetchedDataset()
                 fetched_dataset.dataset_type = dataset['type']
-                fetched_dataset.dataset_id = dataset_id
+                fetched_dataset.dataset_id = dataset['identifier']
                 fetched_dataset.dataset_path = dataset['folder_path']
                 fetched_datasets.append(fetched_dataset)
 

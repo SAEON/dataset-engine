@@ -1,12 +1,3 @@
-[DB]
-USER = ocean_model_db_user
-PASS = password
-HOST = localhost
-PORT = 5430
-NAME = ocean_model_db
-ECHO = True
-ISOLATION_LEVEL = READ COMMITTED
-
 [OCEAN_DATASET]
 API_URL = http://localhost:2024
 HYDRA_PUBLIC_URL = http://localhost:9000

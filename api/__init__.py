@@ -1,18 +1,27 @@
-from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from db import Session
-from db.models import Dataset
-from somisana.version import VERSION
-from .models import DatasetMetadata, Variable, Threshold
+from .routers import ocean_dataset
+from .routers.ocean_dataset import on_ocean_dataset_startup
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    on_ocean_dataset_startup()
+    yield
+
 
 app = FastAPI(
-    title="SOMISANA API",
-    description="SOMISANA | SOMISANA Api",
-    version=VERSION,
+    title="SOMISANA Dataset API",
+    description="SOMISANA Dataset | SOMISANA Dataset Api",
     docs_url='/swagger',
     redoc_url='/docs',
+    lifespan=lifespan
 )
+
+app.include_router(ocean_dataset.router, prefix='/ocean_dataset', tags=['Product'])
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,31 +29,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.get("/dataset_meta/{dataset_id}")
-async def get_dataset_metadata(dataset_id: str) -> DatasetMetadata:
-    dataset = Session.get(Dataset, dataset_id)
-
-    if not dataset:
-        raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
-
-    return DatasetMetadata(
-        start_date=dataset.start_date,
-        end_date=dataset.end_date,
-        time_step_minutes=dataset.time_step_minutes,
-        variables=[
-            Variable(
-                name=variable.variable_name,
-                thresholds=[
-                    Threshold(
-                        min_value=threshold.min_value,
-                        max_value=threshold.max_value,
-                        dependant_value=threshold.dependent_variable_value
-                    )
-                    for threshold in variable.thresholds
-                ]
-            )
-            for variable in dataset.variables
-        ],
-    )
