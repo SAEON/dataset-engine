@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from pathlib import Path
 
 import numpy as np
@@ -8,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi import Response
 from fastapi.responses import JSONResponse
 
-DATA_DIR = Path("./data")
+DATA_DIR = Path(os.getenv("DATA_DIR", "./data"))
 METADATA_PATH = DATA_DIR / "datasets_metadata.json"
 DATA_VARS = ["temp", "salt", "u", "v", "zeta"]
 
