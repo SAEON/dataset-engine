@@ -3,7 +3,7 @@ import logging
 from ingest.ingesters.dataset_processor_interface import DatasetProcessorInterface
 from pathlib import Path
 from .utils import parse_ocean_dataset_path
-from .ocean_dataset_ingester import convert_netcdf_to_zarr, extract_and_save_metadata
+from .ocean_dataset_ingester import convert_netcdf_to_json, extract_and_save_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +26,10 @@ class OceanDatasetProcessor(DatasetProcessorInterface):
             # Decipher path
             parsed_path = parse_ocean_dataset_path(data_path)
 
-            zarr_file_path = Path(f'{ZARR_OUTPUT_DIR}/{dataset_id}.zarr')
+            dataset_output_dir = DATA_DIR / dataset_id
 
-            # Convert netcdf dataset to Zarr Datastore
-            convert_netcdf_to_zarr(Path(parsed_path), zarr_file_path)
-
-            # Write Zarr metadata to metadata json
-            extract_and_save_metadata(dataset_id, zarr_file_path, Path(METADATA_OUTPUT_FILE))
+            # Convert netcdf dataset to JSON files
+            convert_netcdf_to_json(Path(parsed_path), dataset_output_dir, Path(METADATA_OUTPUT_FILE), dataset_id)
 
             return True
         except Exception as e:

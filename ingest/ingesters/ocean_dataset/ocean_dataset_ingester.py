@@ -18,16 +18,14 @@ VARIABLES = {
 }
 
 
-def extract_and_save_metadata(dataset_id: str, zarr_path: Path, metadata_file: Path):
+def extract_and_save_metadata(dataset_id: str, ds: xr.Dataset, metadata_file: Path):
     """
-    Opens a Zarr store, calculates metadata, populates a structured class instance,
+    Calculates metadata from an xarray Dataset, populates a structured class instance,
     and saves it to a JSON file.
     """
     logger.info(f"Calculating metadata for dataset '{dataset_id}'")
 
     try:
-        ds = xr.open_zarr(zarr_path, consolidated=True)
-
         metadata = DatasetMetadata()
 
         lon_min, lon_max = ds.lon_rho.min().compute().item(), ds.lon_rho.max().compute().item()
@@ -99,16 +97,71 @@ def save_metadata(dataset_id: str, metadata: DatasetMetadata, metadata_file_path
         json.dump(all_metadata, f, indent=4)
 
 
-def convert_netcdf_to_zarr(netcdf_dataset_path: Path, zarr_dataset_path: Path):
+def convert_netcdf_to_json(netcdf_dataset_path: Path, output_dir: Path, metadata_file: Path, dataset_id: str):
     """
-    Converts a NetCDF file to a Zarr store.
+    Converts a NetCDF file to a set of JSON files (grid.json and depth_X.json).
+    Downsamples time to every 4 hours.
     """
+    import numpy as np
+    
     if not netcdf_dataset_path.exists():
         logger.error(f"Input file not found at '{netcdf_dataset_path}'")
         return
 
-    logger.info(f"Converting Dataset netcdf to Zarr store: {zarr_dataset_path}")
-    ds = xr.open_dataset(netcdf_dataset_path, chunks={})
-    logger.info(f"Dataset structure: {ds}")
-    ds.to_zarr(zarr_dataset_path, mode='w', consolidated=True)
-    logger.info(f"Zarr conversion successful!")
+    logger.info(f"Converting Dataset netcdf to JSON in: {output_dir}")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    ds = xr.open_dataset(netcdf_dataset_path)
+
+    # Downsample to every 4 hours (original is every 30 mins, so every 8th step)
+    # But better to use time resampling if we want to be robust
+    ds = ds.sel(time=ds.time.dt.hour % 4 == 0)
+    # Ensure we only pick the first 30min of that hour if multiple exist
+    ds = ds.resample(time="4H").nearest(tolerance="1H")
+
+    def replace_nans(arr):
+        """Helper to replace np.nan with None for valid JSON nulls"""
+        # Convert to list first, then manually traverse or use simple replacement
+        arr_list = arr.tolist()
+        def recursive_replace(obj):
+            if isinstance(obj, list):
+                return [recursive_replace(item) for item in obj]
+            elif pd.isna(obj):
+                return None
+            return obj
+        return recursive_replace(arr_list)
+
+    # 1. Save grid.json
+    grid_data = {
+        "lons": replace_nans(ds.lon_rho.values.flatten()),
+        "lats": replace_nans(ds.lat_rho.values.flatten())
+    }
+    with open(output_dir / "grid.json", "w") as f:
+        json.dump(grid_data, f)
+
+    # 2. Save depth_X.json
+    depth_levels = ds.depth.values.tolist()
+    time_steps = ds.time.values
+    
+    for i, depth in enumerate(depth_levels):
+        depth_data_array = []
+        for t_idx, t in enumerate(time_steps):
+            step_data = {
+                "time": str(t),
+                "temp": replace_nans(ds.temp.isel(depth=i, time=t_idx).values.flatten()),
+                "salt": replace_nans(ds.salt.isel(depth=i, time=t_idx).values.flatten()),
+                "u": replace_nans(ds.u.isel(depth=i, time=t_idx).values.flatten()),
+                "v": replace_nans(ds.v.isel(depth=i, time=t_idx).values.flatten()),
+            }
+            if i == 0 and "zeta" in ds:
+                step_data["zeta"] = replace_nans(ds.zeta.isel(time=t_idx).values.flatten())
+                
+            depth_data_array.append(step_data)
+
+        with open(output_dir / f"depth_{i}.json", "w") as f:
+            json.dump(depth_data_array, f)
+
+    # 3. Save metadata
+    extract_and_save_metadata(dataset_id, ds, metadata_file)
+
+    logger.info(f"JSON conversion and metadata save successful for {dataset_id}!")

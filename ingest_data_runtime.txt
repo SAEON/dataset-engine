@@ -1,1 +1,0 @@
-The ingest_data function took 151.85 seconds to run.

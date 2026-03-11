@@ -4,10 +4,10 @@ import os
 from pathlib import Path
 
 import numpy as np
+import orjson
 import xarray as xr
 from fastapi import APIRouter, HTTPException
 from fastapi import Response
-from fastapi.responses import JSONResponse
 
 DATA_DIR = Path(os.getenv("DATA_DIR", "./data"))
 METADATA_PATH = DATA_DIR / "datasets_metadata.json"
@@ -73,37 +73,49 @@ def get_specific_metadata(dataset_id: str):
     raise HTTPException(status_code=404, detail=f"Dataset ID '{dataset_id}' not found.")
 
 
-@router.get("/points/{dataset_id}/{time_index}/{depth_index}")
-async def get_points_data(dataset_id: str, time_index: int, depth_index: int):
+@router.get("/points/{dataset_id}/{depth_index}")
+async def get_points_data(dataset_id: str, depth_index: int):
     try:
-        ds = get_dataset(dataset_id)
-        lon_coords = ds['lon_rho'].values
-        lat_coords = ds['lat_rho'].values
-        data_slices = {}
-        for var in DATA_VARS:
-            if var not in ds.variables:
-                continue
-            data_array = ds[var]
-            slicers = {"time": time_index}
-            if "depth" in data_array.dims:
-                slicers["depth"] = depth_index
-            data_slices[var] = data_array.isel(**slicers).values
-        lons_flat = lon_coords.flatten()
-        lats_flat = lat_coords.flatten()
-        flat_data_slices = {var: arr.flatten() for var, arr in data_slices.items()}
-        points = []
-        if 'temp' in flat_data_slices:
-            for i in range(len(lons_flat)):
-                if np.isnan(flat_data_slices['temp'][i]):
-                    continue
-                properties = {var: float(flat_data_slices.get(var, [np.nan])[i]) for var in DATA_VARS}
-                points.append({
-                    "position": [float(lons_flat[i]), float(lats_flat[i])],
-                    "properties": properties
-                })
-        return JSONResponse(content=points)
-    except HTTPException as http_exc:
-        raise http_exc
+        # Construct the path to the depth_X.json file
+        json_path = DATA_DIR / dataset_id / f"depth_{depth_index}.json"
+        
+        if not json_path.exists():
+            raise HTTPException(status_code=404, detail=f"Data for dataset '{dataset_id}' and depth '{depth_index}' not found.")
+
+        # Read the JSON file and return it
+        with open(json_path, 'rb') as f:
+            content = f.read()
+            
+        return Response(
+            content=content,
+            media_type="application/json"
+        )
+
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        logger.exception(f"Error creating points data for '{dataset_id}': {e}")
-        return Response(status_code=500, content=f"Error creating points data: {e}")
+        logger.exception(f"Error serving JSON data: {e}")
+        return Response(status_code=500, content=str(e))
+
+
+@router.get("/grid/{dataset_id}")
+async def get_grid_data(dataset_id: str):
+    try:
+        json_path = DATA_DIR / dataset_id / "grid.json"
+        
+        if not json_path.exists():
+            raise HTTPException(status_code=404, detail=f"Grid data for dataset '{dataset_id}' not found.")
+
+        with open(json_path, 'rb') as f:
+            content = f.read()
+            
+        return Response(
+            content=content,
+            media_type="application/json"
+        )
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.exception(f"Error serving grid data: {e}")
+        return Response(status_code=500, content=str(e))
