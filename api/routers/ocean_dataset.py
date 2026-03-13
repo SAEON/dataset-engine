@@ -6,8 +6,8 @@ from pathlib import Path
 import numpy as np
 import orjson
 import xarray as xr
-from fastapi import APIRouter, HTTPException
-from fastapi import Response
+from fastapi import APIRouter, HTTPException, Response
+from fastapi.responses import StreamingResponse
 
 DATA_DIR = Path(os.getenv("DATA_DIR", "./data"))
 METADATA_PATH = DATA_DIR / "datasets_metadata.json"
@@ -82,13 +82,15 @@ async def get_points_data(dataset_id: str, depth_index: int):
         if not json_path.exists():
             raise HTTPException(status_code=404, detail=f"Data for dataset '{dataset_id}' and depth '{depth_index}' not found.")
 
-        # Read the JSON file and return it
-        with open(json_path, 'rb') as f:
-            content = f.read()
-            
-        return Response(
-            content=content,
-            media_type="application/json"
+        # Use a generator to stream the file line by line
+        def iterfile():
+            with open(json_path, 'rb') as f:
+                for line in f:
+                    yield line
+
+        return StreamingResponse(
+            iterfile(),
+            media_type="application/x-ndjson"
         )
 
     except HTTPException as e:

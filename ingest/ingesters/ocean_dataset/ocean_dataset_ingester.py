@@ -85,7 +85,7 @@ def extract_and_save_metadata(dataset_id: str, ds: xr.Dataset, metadata_file: Pa
 def save_metadata(dataset_id: str, metadata: DatasetMetadata, metadata_file_path: Path):
     metadata_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if metadata_file_path.exists():
+    if metadata_file_path.exists() and metadata_file_path.stat().st_size > 0:
         with open(metadata_file_path, 'r') as f:
             all_metadata = json.load(f)
     else:
@@ -144,22 +144,20 @@ def convert_netcdf_to_json(netcdf_dataset_path: Path, output_dir: Path, metadata
     time_steps = ds.time.values
     
     for i, depth in enumerate(depth_levels):
-        depth_data_array = []
-        for t_idx, t in enumerate(time_steps):
-            step_data = {
-                "time": str(t),
-                "temp": replace_nans(ds.temp.isel(depth=i, time=t_idx).values.flatten()),
-                "salt": replace_nans(ds.salt.isel(depth=i, time=t_idx).values.flatten()),
-                "u": replace_nans(ds.u.isel(depth=i, time=t_idx).values.flatten()),
-                "v": replace_nans(ds.v.isel(depth=i, time=t_idx).values.flatten()),
-            }
-            if i == 0 and "zeta" in ds:
-                step_data["zeta"] = replace_nans(ds.zeta.isel(time=t_idx).values.flatten())
-                
-            depth_data_array.append(step_data)
-
+        logger.info(f"Saving depth index: {i}")
         with open(output_dir / f"depth_{i}.json", "w") as f:
-            json.dump(depth_data_array, f)
+            for t_idx, t in enumerate(time_steps):
+                step_data = {
+                    "time": str(t),
+                    "temp": replace_nans(ds.temp.isel(depth=i, time=t_idx).values.flatten()),
+                    "salt": replace_nans(ds.salt.isel(depth=i, time=t_idx).values.flatten()),
+                    "u": replace_nans(ds.u.isel(depth=i, time=t_idx).values.flatten()),
+                    "v": replace_nans(ds.v.isel(depth=i, time=t_idx).values.flatten()),
+                }
+                if i == 0 and "zeta" in ds:
+                    step_data["zeta"] = replace_nans(ds.zeta.isel(time=t_idx).values.flatten())
+                
+                f.write(json.dumps(step_data) + "\n")
 
     # 3. Save metadata
     extract_and_save_metadata(dataset_id, ds, metadata_file)
