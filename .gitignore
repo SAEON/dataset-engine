@@ -8,5 +8,3 @@ __pycache__/
 .env
 .idea/
 config.ini
-data/*
-!data/pass

@@ -9,7 +9,7 @@ import xarray as xr
 from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import StreamingResponse
 
-DATA_DIR = Path(os.getenv("DATA_DIR", "./data"))
+DATA_DIR = Path(os.getenv("DATA_DIR", "../data"))
 METADATA_PATH = DATA_DIR / "datasets_metadata.json"
 DATA_VARS = ["temp", "salt", "u", "v", "zeta"]
 

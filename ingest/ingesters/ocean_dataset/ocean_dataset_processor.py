@@ -1,4 +1,5 @@
 import logging
+import os
 
 from ingest.ingesters.dataset_processor_interface import DatasetProcessorInterface
 from pathlib import Path
@@ -12,7 +13,7 @@ INGEST_BATCH_SIZE = 50000
 current_file = Path(__file__).resolve()
 project_root = current_file.parent.parent.parent.parent
 
-DATA_DIR = project_root / "data"
+DATA_DIR = Path(os.getenv("DATA_DIR", project_root.parent / "data"))
 METADATA_OUTPUT_FILE = DATA_DIR / "datasets_metadata.json"
 ZARR_OUTPUT_DIR = DATA_DIR
 
