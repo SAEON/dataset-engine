@@ -3,64 +3,79 @@ import logging
 import os
 from pathlib import Path
 
-import numpy as np
-import orjson
-import xarray as xr
 from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import StreamingResponse
 
 DATA_DIR = Path(os.getenv("DATA_DIR", "../data"))
-METADATA_PATH = DATA_DIR / "datasets_metadata.json"
-DATA_VARS = ["temp", "salt", "u", "v", "zeta"]
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _get_metadata() -> dict:
-    try:
-        with open(METADATA_PATH, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        logger.error(f"Metadata file not found at '{METADATA_PATH}'.")
-        return {}
-    except Exception as e:
-        logger.exception(f"Error reading metadata: {e}")
-        return {}
-
-
 @router.get("/")
 def read_root():
-    metadata = _get_metadata()
     return {
-        "message": "Zarr Contour Data Server is running.",
-        "available_datasets": list(metadata.keys())
+        "message": "Zarr Contour Data Server is running."
     }
 
 
-@router.get("/metadata")
-def get_all_metadata():
-    return _get_metadata()
-
-
-@router.get("/metadata/{dataset_id}")
-def get_specific_metadata(dataset_id: str):
-    metadata = _get_metadata()
-    if dataset_id in metadata:
-        return metadata[dataset_id]
-    raise HTTPException(status_code=404, detail=f"Dataset ID '{dataset_id}' not found.")
-
-
-@router.get("/points/{dataset_id}/{depth_index}")
-async def get_points_data(dataset_id: str, depth_index: int):
+@router.get("/products")
+@router.get("/get_products")
+def get_products():
+    products_path = DATA_DIR / "products.json"
+    if not products_path.exists():
+        logger.error(f"products.json not found at '{products_path}'")
+        return []
     try:
-        # Construct the path to the depth_X.json file
-        json_path = DATA_DIR / dataset_id / f"depth_{depth_index}.json"
-        
-        if not json_path.exists():
-            raise HTTPException(status_code=404, detail=f"Data for dataset '{dataset_id}' and depth '{depth_index}' not found.")
+        with open(products_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.exception(f"Error loading products.json: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error reading products.")
 
-        # Use a generator to stream the file line by line
+
+@router.get("/metadata/{product_title}/{dataset_id}")
+def get_specific_metadata(product_title: str, dataset_id: str):
+    json_path = DATA_DIR / product_title / dataset_id / "metadata.json"
+    if not json_path.exists():
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Metadata for dataset '{dataset_id}' in product '{product_title}' not found."
+        )
+    try:
+        with open(json_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.exception(f"Error reading metadata for {dataset_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error reading metadata.")
+
+
+@router.get("/grid/{product_title}/{dataset_id}")
+async def get_grid_data(product_title: str, dataset_id: str):
+    json_path = DATA_DIR / product_title / dataset_id / "grid.json"
+    if not json_path.exists():
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Grid data for dataset '{dataset_id}' in product '{product_title}' not found."
+        )
+    try:
+        with open(json_path, 'rb') as f:
+            content = f.read()
+        return Response(content=content, media_type="application/json")
+    except Exception as e:
+        logger.exception(f"Error serving grid data for {dataset_id}: {e}")
+        return Response(status_code=500, content=str(e))
+
+
+@router.get("/points/{product_title}/{dataset_id}/{depth_index}")
+async def get_points_data(product_title: str, dataset_id: str, depth_index: int):
+    json_path = DATA_DIR / product_title / dataset_id / f"depth_{depth_index}.json"
+    if not json_path.exists():
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Data for dataset '{dataset_id}' in product '{product_title}' at depth '{depth_index}' not found."
+        )
+    try:
         def iterfile():
             with open(json_path, 'rb') as f:
                 for line in f:
@@ -70,32 +85,6 @@ async def get_points_data(dataset_id: str, depth_index: int):
             iterfile(),
             media_type="application/x-ndjson"
         )
-
-    except HTTPException as e:
-        raise e
     except Exception as e:
-        logger.exception(f"Error serving JSON data: {e}")
-        return Response(status_code=500, content=str(e))
-
-
-@router.get("/grid/{dataset_id}")
-async def get_grid_data(dataset_id: str):
-    try:
-        json_path = DATA_DIR / dataset_id / "grid.json"
-        
-        if not json_path.exists():
-            raise HTTPException(status_code=404, detail=f"Grid data for dataset '{dataset_id}' not found.")
-
-        with open(json_path, 'rb') as f:
-            content = f.read()
-            
-        return Response(
-            content=content,
-            media_type="application/json"
-        )
-
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        logger.exception(f"Error serving grid data: {e}")
+        logger.exception(f"Error serving JSON data for {dataset_id} at depth {depth_index}: {e}")
         return Response(status_code=500, content=str(e))

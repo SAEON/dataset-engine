@@ -1,8 +1,9 @@
 import logging
 
-from ingest.dataset_orchestrator import fetch_and_ingest
+from ingest.orchestrator import synchronise, ingest
 
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == '__main__':
-    fetch_and_ingest()
+    synchronise()
+    ingest()
