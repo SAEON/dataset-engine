@@ -20,6 +20,8 @@ VARIABLES = {
     "zeta": {"name": "Sea surface height", "units": "m"},
 }
 
+DEPTHS = [0.0, -50.0, -100.0, -500.0, -1000.0]
+
 DATA_DIR = Path(config['FILES']['DATA_DIR_PATH'])
 
 
@@ -57,22 +59,23 @@ class DatasetIngester:
             with open(output_dir / "grid.json", "w") as f:
                 json.dump(grid_data, f)
 
+            depth_tuples = self.__get_depth_tuples(ds.depth.values.tolist())
+
             # 2. Save depth_X.json
-            depth_levels = ds.depth.values.tolist()
             time_steps = ds.time.values
 
-            for i, depth in enumerate(depth_levels):
-                logger.debug(f"Saving depth index: {i}")
-                with open(output_dir / f"depth_{i}.json", "w") as f:
+            for loop_idx, (depth_idx, depth) in enumerate(depth_tuples):
+                logger.debug(f"Saving depth index: {loop_idx}")
+                with open(output_dir / f"depth_{loop_idx}.json", "w") as f:
                     for t_idx, t in enumerate(time_steps):
                         step_data = {
                             "time": str(t),
-                            "temp": self.__replace_nans(ds.temp.isel(depth=i, time=t_idx).values.flatten()),
-                            "salt": self.__replace_nans(ds.salt.isel(depth=i, time=t_idx).values.flatten()),
-                            "u": self.__replace_nans(ds.u.isel(depth=i, time=t_idx).values.flatten()),
-                            "v": self.__replace_nans(ds.v.isel(depth=i, time=t_idx).values.flatten()),
+                            "temp": self.__replace_nans(ds.temp.isel(depth=depth_idx, time=t_idx).values.flatten()),
+                            "salt": self.__replace_nans(ds.salt.isel(depth=depth_idx, time=t_idx).values.flatten()),
+                            "u": self.__replace_nans(ds.u.isel(depth=depth_idx, time=t_idx).values.flatten()),
+                            "v": self.__replace_nans(ds.v.isel(depth=depth_idx, time=t_idx).values.flatten()),
                         }
-                        if i == 0 and "zeta" in ds:
+                        if depth_idx == 0 and "zeta" in ds:
                             step_data["zeta"] = self.__replace_nans(ds.zeta.isel(time=t_idx).values.flatten())
 
                         f.write(json.dumps(step_data) + "\n")
@@ -107,7 +110,8 @@ class DatasetIngester:
         metadata.v_min_global = float(ds['v'].min(skipna=True).compute().item())
         metadata.v_max_global = float(ds['v'].max(skipna=True).compute().item())
 
-        metadata.depth_levels = ds.depth.values.tolist()
+        depth_tuples = self.__get_depth_tuples(ds.depth.values.tolist())
+        metadata.depth_levels = DEPTHS
 
         time_coords = pd.to_datetime(ds.time.values)
         metadata.time_steps = len(ds.time)
@@ -128,7 +132,7 @@ class DatasetIngester:
             data_array = ds[var_name]
 
             if "depth" in data_array.dims:
-                for i, depth in enumerate(metadata.depth_levels):
+                for i, depth in depth_tuples:
                     depth_slice = data_array.isel(depth=i)
                     q05 = float(depth_slice.quantile(0.05, skipna=True).compute().item())
                     q95 = float(depth_slice.quantile(0.95, skipna=True).compute().item())
@@ -151,6 +155,13 @@ class DatasetIngester:
         metadata_file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(metadata_file_path, 'w') as f:
             json.dump(metadata.to_dict(), f, indent=4)
+
+    def __get_depth_tuples(self, model_depths):
+        depth_tuples = []
+        for i, depth in enumerate(model_depths):
+            if depth in DEPTHS:
+                depth_tuples.append((i, depth))
+        return depth_tuples
 
     def __replace_nans(self, arr):
         """Helper to replace np.nan with None for valid JSON nulls"""
